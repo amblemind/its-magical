@@ -13,7 +13,7 @@ export default function Home() {
 
       <main className={styles.main}>
         <h1 className={styles.title}>
-          Welcome to <a href="https://its-magical.vercel.app/">It's Magical!</a>
+          Welcome to <a href="https://its-magical.vercel.app/">It&apos;s Magical!</a>
         </h1>
 
         <p className={styles.description}>
