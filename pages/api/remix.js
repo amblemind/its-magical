@@ -1,4 +1,34 @@
-import puppeteer from 'puppeteer';
+import chromium from 'chrome-aws-lambda'
+
+
+async function getBrowserInstance() {
+	const executablePath = await chromium.executablePath
+
+	if (!executablePath) {
+		// running locally
+		const puppeteer = require('puppeteer')
+		return puppeteer.launch({
+			args: chromium.args,
+			headless: true,
+			defaultViewport: {
+				width: 1280,
+				height: 720
+			},
+			ignoreHTTPSErrors: true
+		})
+	}
+
+	return chromium.puppeteer.launch({
+		args: chromium.args,
+		defaultViewport: {
+			width: 1280,
+			height: 720
+		},
+		executablePath,
+		headless: chromium.headless,
+		ignoreHTTPSErrors: true
+	})
+}
 
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 export default async function handler(req, res) {
@@ -20,12 +50,8 @@ export default async function handler(req, res) {
 
     console.log("connecting to browser");
 
-    browser = await puppeteer.launch();
+    browser = await getBrowserInstance();
     page = await browser.newPage();
-    await page.setViewport({
-      width: 1980,
-      height: 1080,
-    });
 
     console.log("navigating to page");
     await page.goto(url, {waitUntil: 'networkidle2'});
