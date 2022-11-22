@@ -8,42 +8,21 @@ export default function Home() {
   const [websiteURL, setWebsiteURL] = useState('')
 	const [imageURL, setImageURL] = useState('/')
 
-  //   async function remix() {
-  //     const res = await fetch('/api/remix', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       },
-  //       body: JSON.stringify({
-  //         url: websiteURL
-  //       })
-  //     }).then((res) => res.json())
+  async function remix() {
 
+    const res = await fetch('/api/remix', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        url: websiteURL
+      })
+    }).then((res) => {
 
-  
-  //     // setImageURL(res.body)
-  //     console.log(res)
-	// }
-
-    async function remix() {
-
-      // setImageURL('api/remix?url='+encodeURIComponent(websiteURL));
-
-      const img = document.querySelector('img');
-      img.src = 'api/remix?url='+encodeURIComponent(websiteURL);
-
-      // const res = await fetch('/api/remix', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({
-      //     url: websiteURL
-      //   })
-      // }).then((res) => res.json())
-
-      // setImageURL(res)
-      // console.log(res)
+      console.log(res);
+      setImageURL(res.url);
+    })
   }
 
   return (
@@ -69,25 +48,7 @@ export default function Home() {
           <button onClick={remix}>Remix</button>
         </div>
 
-        {/* <Image src={imageURL} width={1280} height={720} /> */}
-
-        {/* <Image src="" width={1280} height={720} /> */}
-
-        <img alt="your screenshot"></img>
-
-        {/* <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p> */}
-
-        {/* <div className={styles.form}>
-          <form action="/tbd" method="post">
-            <input type="url" name="url" placeholder="for example https://darrenalderman.com"></input>
-            <button type="submit">Screenshot!</button>
-          </form>
-        </div> */}
-
-        {/* <img alt="your screenshot"></img> */}
+        <Image src={imageURL} width={1280} height={720} alt="your screenshot"/>
 
       </main>
 
