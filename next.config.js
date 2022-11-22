@@ -6,7 +6,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'its-magical.s3.amazonaws.com'
-      },
+      }
     ],
   }
 };

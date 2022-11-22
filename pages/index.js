@@ -6,7 +6,7 @@ import { useState } from 'react'
 export default function Home() {
 
   const [websiteURL, setWebsiteURL] = useState('')
-	const [imageURL, setImageURL] = useState('/')
+	const [imageURL, setImageURL] = useState('')
 
   async function remix() {
 
@@ -18,11 +18,10 @@ export default function Home() {
       body: JSON.stringify({
         url: websiteURL
       })
-    }).then((res) => {
+    }).then(res => res.json())
 
-      console.log(res);
-      setImageURL(res.url);
-    })
+    console.log(res);
+    setImageURL(res.url);
   }
 
   return (
