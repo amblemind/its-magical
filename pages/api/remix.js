@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
 		console.log("fecthing image")
 		// fetch from api with body and headers
-		const image = await fetch('https://chrome.browserless.io/screenshot?token=' + process.env.BROWSERLESS_TOKEN, {
+		const screenshot = await fetch('https://chrome.browserless.io/screenshot?token=' + process.env.BROWSERLESS_TOKEN, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -38,9 +38,12 @@ export default async function handler(req, res) {
 			body: JSON.stringify({
 				url: url
 			})
-		})	
+		})
 
-		console.log(image)
+		console.log(screenshot)
+
+		const imageBuffer = await screenshot.arrayBuffer()
+		
 
 		// upload to S3
 		const fileName = 'its_magical_' + Date.now() + '.png';
@@ -49,7 +52,8 @@ export default async function handler(req, res) {
 		await S3.upload({
 			Bucket: S3_BUCKET,
 			Key: fileName,
-			Body: image.body
+			Body: Buffer.from(imageBuffer, 'base64'),
+            ContentType: 'image/png',
 		}, (err, data) => {
 
 			if (err) {
