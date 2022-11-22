@@ -6,7 +6,8 @@ import { useState } from 'react'
 export default function Home() {
 
   const [websiteURL, setWebsiteURL] = useState('')
-	const [imageURL, setImageURL] = useState('')
+	const [imageURL, setImageURL] = useState('/placeholder.png')
+  const [colorCode, setColorCode] = useState('#fff')
 
   async function remix() {
 
@@ -16,7 +17,8 @@ export default function Home() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        url: websiteURL
+        url: websiteURL,
+        color: colorCode
       })
     }).then(res => res.json())
 
@@ -38,16 +40,32 @@ export default function Home() {
         </h1>
 
         <div className={styles.inputArea}>
-          <input
-            type="text"
-            value={websiteURL}
-            onChange={(e) => setWebsiteURL(e.target.value)}
-            placeholder="Enter a website URL"
-          />
-          <button onClick={remix}>Remix</button>
-        </div>
+          <div>
+            <label htmlFor="websiteURL">Step 1: Enter a Website URL</label>
+            <input
+              class="websiteURL"
+              type="text"
+              value={websiteURL}
+              onChange={(e) => setWebsiteURL(e.target.value)}
+              placeholder="Enter a website URL"
+            />
+          </div>
+          <div>
+            <label htmlFor="websiteURL">Step 2: Pick a Color ({colorCode})</label>
+            <input 
+              id="colorCode"
+              type="color"
+              value={colorCode} 
+              onChange={(e) => setColorCode(e.target.value)}
+            />
+          </div>
 
-        <Image src={imageURL} width={1280} height={720} alt="your screenshot"/>
+          {websiteURL && (colorCode !== '#fff')
+            ? <button onClick={remix}>Remix</button> : <small>👆</small>
+          }
+        </div>
+        
+        <Image src={imageURL} width={1000} height={563} quality={100} priority alt="your screenshot"/>
 
       </main>
 

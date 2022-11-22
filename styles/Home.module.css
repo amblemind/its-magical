@@ -108,6 +108,43 @@
   margin-left: 0.5rem;
 }
 
+.inputArea {
+  margin: 1rem 0 2rem;
+  display: flex;
+  flex-direction: column;
+  width: 35vw;
+}
+
+.inputArea > div {
+  display: flex;
+  flex-direction: column;
+  padding: .5rem 0;
+}
+
+.inputArea > div > label{
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.inputArea > div > input  {
+  width: 100%;
+  border: 1px solid #eaeaea;
+  border-radius: 5px;
+}
+
+.inputArea > div:first-child > input {
+  padding: 0.5rem;
+}
+
+.inputArea > button {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #eaeaea;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+
 @media (max-width: 600px) {
   .grid {
     width: 100%;
