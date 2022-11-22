@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
 
 		// fetch from api with body and headers
-		const response = await fetch('https://chrome.browserless.io/screenshot?token=' + process.env.BROWSERLESS_TOKEN, {
+		const image = await fetch('https://chrome.browserless.io/screenshot?token=' + process.env.BROWSERLESS_TOKEN, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -34,16 +34,13 @@ export default async function handler(req, res) {
 			})
 		})	
 
-		// get buffer from response
-		const imageBuffer = await response.buffer();
-
 		// upload to S3
 		const fileName = 'its_magical_' + Date.now() + '.png';
 
 		await S3.upload({
 			Bucket: S3_BUCKET,
 			Key: fileName,
-			Body: imageBuffer
+			Body: image.body
 		}, (err, data) => {
 			var params = {Bucket: S3_BUCKET, Key: fileName};
 			var signedURL = S3.getSignedUrl('getObject', params);
