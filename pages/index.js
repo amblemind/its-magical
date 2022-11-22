@@ -8,8 +8,11 @@ export default function Home() {
   const [websiteURL, setWebsiteURL] = useState('')
 	const [imageURL, setImageURL] = useState('/placeholder.png')
   const [colorCode, setColorCode] = useState('#fff')
+  const [loading, setLoading] = useState(false)
 
   async function remix() {
+
+    setLoading(true);
 
     const res = await fetch('/api/remix', {
       method: 'POST',
@@ -24,6 +27,7 @@ export default function Home() {
 
     console.log(res);
     setImageURL(res.url);
+    setLoading(false);
   }
 
   return (
@@ -60,9 +64,8 @@ export default function Home() {
             />
           </div>
 
-          {websiteURL && (colorCode !== '#fff')
-            ? <button onClick={remix}>Remix</button> : <small>👆</small>
-          }
+          {(websiteURL && (colorCode !== '#fff') && !loading) && <button onClick={remix}>Remix</button>}
+          {(loading) && <p><center>Loading...</center></p>}
         </div>
         
         <Image src={imageURL} width={1000} height={563} quality={100} priority alt="your screenshot"/>
