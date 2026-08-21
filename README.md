@@ -1,14 +1,16 @@
-# It's Magical
+# Repaint Your Site
 
-Repaint any website with one number.
+Recolour any website with one number.
 
 Give it a URL and a hue, and it loads the real page in a headless browser,
 overrides every colour the site declares, and hands back a screenshot of the
 result.
 
+**[Try it →](https://repaint-your-site.vercel.app)**
+
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshot.png" alt="The It's Magical interface at 284 degrees, themed in violet" /></td>
+    <td width="50%"><img src="docs/screenshot.png" alt="The Repaint Your Site interface at 284 degrees, themed in violet" /></td>
     <td width="50%"><img src="docs/screenshot-alt.png" alt="The same interface at 96 degrees, themed in green" /></td>
   </tr>
 </table>
@@ -89,7 +91,15 @@ the variable it is missing.
 
 ## Built with
 
-Next.js (pages router) · React · Browserless · deployed on Vercel
+Next.js (pages router) · React · [Browserless](https://browserless.io) · deployed on Vercel
+
+The badge in the bottom-right corner is served by
+[Made By Tag](https://github.com/amblemind/made-by-tag), a sibling project — this site is its
+live install.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ---
 

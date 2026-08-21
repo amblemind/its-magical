@@ -89,19 +89,20 @@ export default function Home() {
           very first paint, before hydration, with no flash of the wrong colour.
         */}
         <style>{`:root{--hue:${safeHue}}`}</style>
-        <title>It&apos;s Magical — repaint any website with one hue</title>
+        <title>Repaint Your Site — recolour any website with one number</title>
         <meta
           name="description"
           content="Enter a URL, pick a hue, and get back a screenshot of that site with every colour rebuilt from your one number."
         />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
 
       <header className={styles.topbar}>
         <div className={`${styles.shell} ${styles.topbarInner}`}>
           <span className={styles.wordmark}>
             <span className={styles.mark} aria-hidden="true" />
-            It&apos;s Magical
+            Repaint Your Site
           </span>
           <span className={styles.readout}>
             <span>current hue</span>
@@ -233,7 +234,7 @@ export default function Home() {
                 <a
                   className={styles.stageLink}
                   href={result.url}
-                  download={`its-magical-${result.hue}deg.png`}
+                  download={`repaint-${result.hue}deg.png`}
                 >
                   Download PNG
                 </a>
@@ -261,7 +262,7 @@ export default function Home() {
           <span>A passion project by Darren Alderman · © AmbleMind LLC</span>
           <a
             className={styles.footerLink}
-            href="https://github.com/amblemind/its-magical"
+            href="https://github.com/amblemind/repaint-your-site"
             target="_blank"
             rel="noreferrer"
           >
