@@ -1,18 +1,12 @@
 /*
- * Every colour on this page is derived from a single --hue, using the same
- * HSL relationships the API injects into the sites it screenshots. Moving the
- * hue dial re-themes the page live: the tool demonstrated on itself.
+ * The colour tokens are not declared here. They are generated from
+ * lib/palette.js and injected into the document head by pages/index.js, so the
+ * palette this page uses, the palette the "Take the palette" panel hands out,
+ * and the palette the API forces onto other sites all come from one table.
+ *
+ * Moving the hue dial re-themes the page live: the tool demonstrated on itself.
  */
 :root {
-  --bg: hsl(var(--hue, 284), 24%, 7%);
-  --surface: hsl(var(--hue, 284), 20%, 11%);
-  --surface-raised: hsl(var(--hue, 284), 19%, 14%);
-  --line: hsl(var(--hue, 284), 16%, 22%);
-  --line-bright: hsl(var(--hue, 284), 22%, 32%);
-  --muted: hsl(var(--hue, 284), 12%, 60%);
-  --text: hsl(var(--hue, 284), 28%, 93%);
-  --accent: hsl(var(--hue, 284), 85%, 65%);
-  --accent-dim: hsl(var(--hue, 284), 60%, 22%);
   --danger: hsl(2, 72%, 66%);
 
   --radius: 10px;

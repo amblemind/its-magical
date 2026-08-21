@@ -1,8 +1,27 @@
 import Head from 'next/head';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import GitHubStar from '../components/GitHubStar';
+import { DEFAULT_HUE, clampHue, overrideCss, paletteCss, themeRule } from '../lib/palette';
 import styles from '../styles/Home.module.css';
 
-const DEFAULT_HUE = 284;
+const REPO = 'amblemind/repaint-your-site';
+
+const SWATCHES = ['--bg', '--surface-raised', '--line-bright', '--accent-dim', '--muted', '--accent', '--text'];
+
+const CSS_MODES = [
+  {
+    id: 'tokens',
+    label: 'Design tokens',
+    hint: 'The nine variables this page is built from. Drop them in and build with the same relationships.',
+    build: paletteCss,
+  },
+  {
+    id: 'override',
+    label: 'Repaint an existing site',
+    hint: 'The blunt version the API injects. Paste it last and it overrides every colour already on the page.',
+    build: overrideCss,
+  },
+];
 
 const EXAMPLES = ['stripe.com', 'nasa.gov', 'wikipedia.org'];
 
@@ -27,7 +46,10 @@ export default function Home() {
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [cssMode, setCssMode] = useState('tokens');
+  const [copied, setCopied] = useState(false);
   const objectUrl = useRef(null);
+  const copyTimer = useRef(null);
 
   const remix = useCallback(async () => {
     setStatus('loading');
@@ -77,7 +99,32 @@ export default function Home() {
 
   const canRemix = url.trim().length > 0 && status !== 'loading';
   // Clamped before interpolation into a stylesheet.
-  const safeHue = Math.min(359, Math.max(0, Math.round(Number(hue) || 0)));
+  const mode = CSS_MODES.find((item) => item.id === cssMode) ?? CSS_MODES[0];
+  const cssText = mode.build(hue);
+
+  const copyCss = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(cssText);
+    } catch {
+      // No async clipboard on insecure origins or older browsers.
+      const scratch = document.createElement('textarea');
+      scratch.value = cssText;
+      scratch.setAttribute('readonly', '');
+      scratch.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      document.execCommand('copy');
+      scratch.remove();
+    }
+
+    setCopied(true);
+    clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1800);
+  }, [cssText]);
+
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const safeHue = clampHue(hue);
 
   return (
     <div className={styles.page}>
@@ -85,10 +132,11 @@ export default function Home() {
         {/*
           The palette tokens are declared on :root, so their var(--hue) resolves
           against :root -- setting the hue on a descendant would never recompute
-          them. Rendering it as a :root rule here keeps the page themed from the
-          very first paint, before hydration, with no flash of the wrong colour.
+          them. Rendering the whole :root rule here keeps the page themed from
+          the very first paint, before hydration, with no flash of the wrong
+          colour, and keeps lib/palette.js the only place the palette is defined.
         */}
-        <style>{`:root{--hue:${safeHue}}`}</style>
+        <style>{themeRule(safeHue)}</style>
         <title>Repaint Your Site — recolour any website with one number</title>
         <meta
           name="description"
@@ -104,10 +152,13 @@ export default function Home() {
             <span className={styles.mark} aria-hidden="true" />
             Repaint Your Site
           </span>
-          <span className={styles.readout}>
-            <span>current hue</span>
-            <span className={styles.readoutValue}>{String(hue).padStart(3, '0')}°</span>
-          </span>
+          <div className={styles.topbarRight}>
+            <span className={styles.readout}>
+              <span>current hue</span>
+              <span className={styles.readoutValue}>{String(hue).padStart(3, '0')}°</span>
+            </span>
+            <GitHubStar repo={REPO} />
+          </div>
         </div>
       </header>
 
@@ -246,6 +297,42 @@ export default function Home() {
           )}
         </section>
 
+        <section className={styles.palette} id="palette">
+          <div className={styles.paletteHead}>
+            <div>
+              <h2 className={styles.paletteTitle}>Take the palette</h2>
+              <p className={styles.paletteBody}>{mode.hint}</p>
+            </div>
+            <button type="button" className={styles.copyCss} onClick={copyCss}>
+              {copied ? 'Copied' : 'Copy CSS'}
+            </button>
+          </div>
+
+          <div className={styles.swatches} aria-hidden="true">
+            {SWATCHES.map((token) => (
+              <span key={token} style={{ background: `var(${token})` }} />
+            ))}
+          </div>
+
+          <div className={styles.paletteTabs} role="group" aria-label="Which stylesheet to copy">
+            {CSS_MODES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={item.id === cssMode ? styles.paletteTabOn : styles.paletteTab}
+                aria-pressed={item.id === cssMode}
+                onClick={() => setCssMode(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <pre className={styles.paletteCode}>
+            <code>{cssText}</code>
+          </pre>
+        </section>
+
         <section className={styles.pipeline}>
           {PIPELINE.map((step, i) => (
             <article className={styles.step} key={step.title}>
@@ -260,14 +347,7 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={`${styles.shell} ${styles.footerInner}`}>
           <span>A passion project by Darren Alderman · © AmbleMind LLC</span>
-          <a
-            className={styles.footerLink}
-            href="https://github.com/amblemind/repaint-your-site"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Source on GitHub ↗
-          </a>
+          <span className={styles.footerNote}>Every colour above came from {safeHue}°.</span>
         </div>
       </footer>
     </div>

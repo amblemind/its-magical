@@ -61,6 +61,21 @@ a coherent result where a clever one would produce a broken one.
 
 The entire API surface is one route: [`pages/api/remix.js`](pages/api/remix.js).
 
+## Take the palette
+
+![The palette panel, showing swatches and the copyable CSS](docs/screenshot-palette.png)
+
+The dial does not only drive the screenshot. Under the result there is a panel that hands you
+the CSS for whatever hue you have landed on, in two forms:
+
+- **Design tokens** — the nine variables this page themes itself with, ready to build against.
+- **Repaint an existing site** — the blunt `!important` override the API injects, for forcing
+  the hue onto a site you already have.
+
+Both come out of [`lib/palette.js`](lib/palette.js), which is also what themes this page and
+what the API sends to the browser. One table of hue/saturation/lightness values feeds all
+three, so the palette you copy is provably the palette you are looking at.
+
 ## Running it locally
 
 ```bash

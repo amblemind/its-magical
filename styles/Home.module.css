@@ -483,3 +483,140 @@
   .pipeline { grid-template-columns: 1fr; margin-top: 40px; padding: 0; }
   .stageFrame { aspect-ratio: 4 / 3; }
 }
+
+/* --- Nav right cluster -------------------------------------------------- */
+
+.topbarRight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footerNote {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Take the palette --------------------------------------------------- */
+
+.palette {
+  margin: 3.5rem 0 0;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.paletteHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.paletteTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.paletteBody {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.copyCss {
+  flex: none;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.copyCss:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* The palette itself, so the section reads as colour before it reads as code. */
+.swatches {
+  display: flex;
+  gap: 4px;
+  margin: 1.25rem 0 1.15rem;
+}
+
+.swatches > span {
+  flex: 1;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+}
+
+.paletteTabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 0.9rem;
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.paletteTab,
+.paletteTabOn {
+  padding: 0.36rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.paletteTab:hover {
+  color: var(--text);
+}
+
+.paletteTabOn {
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 550;
+}
+
+.paletteCode {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  tab-size: 2;
+}
+
+@media (max-width: 620px) {
+  .paletteHead {
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .palette {
+    padding: 1.15rem;
+  }
+}

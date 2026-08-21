@@ -1,3 +1,4 @@
+import { overrideCss } from '../../lib/palette';
 const BROWSERLESS_ENDPOINT = 'https://chrome.browserless.io/screenshot';
 
 // Hosts that should never be reachable from the screenshot browser. Without
@@ -71,32 +72,6 @@ function resolveHue({ hue, color }) {
  * Every colour property on the target page, rebuilt from a single hue. This is
  * injected into the page after load and before the screenshot is taken.
  */
-function generateCss(hue) {
-  return `
-  :root {
-    --hue: ${hue};
-    --color-normal: hsl(var(--hue), 10%, 62%);
-    --color-light: hsl(var(--hue), 15%, 35%);
-    --color-richer: hsl(var(--hue), 50%, 72%);
-    --color-highlight: hsl(var(--hue), 70%, 45%);
-    --link-color: hsl(var(--hue), 90%, 70%);
-    --background: hsl(var(--hue), 20%, 12%);
-  }
-
-  * {
-    color: var(--color-richer) !important;
-    background-color: var(--background) !important;
-    border-color: var(--color-light) !important;
-    box-shadow: none !important;
-    caret-color: var(--link-color) !important;
-    column-rule-color: var(--color-light) !important;
-    outline-color: var(--color-light) !important;
-    text-decoration-color: var(--color-highlight) !important;
-  }
-
-  a, a * { color: var(--link-color) !important; }
-  `;
-}
 
 function requireEnv(...names) {
   const missing = names.filter((name) => !process.env[name]);
@@ -114,7 +89,7 @@ async function captureScreenshot(url, hue) {
       gotoOptions: { waitUntil: 'networkidle2', timeout: 30000 },
       viewport: { width: 1600, height: 900, deviceScaleFactor: 2 },
       options: { fullPage: false, type: 'png' },
-      addStyleTag: [{ content: generateCss(hue) }],
+      addStyleTag: [{ content: overrideCss(hue) }],
     }),
   });
 
