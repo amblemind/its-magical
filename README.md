@@ -1,34 +1,94 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# It's Magical
 
-## Getting Started
+Repaint any website with one number.
 
-First, run the development server:
+Give it a URL and a hue, and it loads the real page in a headless browser,
+overrides every colour the site declares, and hands back a screenshot of the
+result.
 
-```bash
-npm run dev
-# or
-yarn dev
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshot.png" alt="The It's Magical interface at 284 degrees, themed in violet" /></td>
+    <td width="50%"><img src="docs/screenshot-alt.png" alt="The same interface at 96 degrees, themed in green" /></td>
+  </tr>
+</table>
+
+Those are the same page at two hues. The interface themes itself from the value
+on the dial using the same colour relationships it will apply to your target
+site, so the control previews the transformation before you ever run it.
+
+## The idea
+
+Recolouring an arbitrary website is hard if you try to parse its stylesheet:
+every site structures colour differently, and there is no reliable "primary
+colour" to swap.
+
+So this doesn't parse anything. It takes one number — the hue, 0–359 — and
+rebuilds an entire palette from it in HSL, then forces that palette onto every
+colour property on the page:
+
+```css
+:root {
+  --hue: 284;
+  --color-richer:    hsl(var(--hue), 50%, 72%);
+  --color-highlight: hsl(var(--hue), 70%, 45%);
+  --link-color:      hsl(var(--hue), 90%, 70%);
+  --background:      hsl(var(--hue), 20%, 12%);
+}
+
+* {
+  color: var(--color-richer) !important;
+  background-color: var(--background) !important;
+  border-color: var(--color-light) !important;
+  /* ...every other colour property */
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Saturation and lightness are fixed by the palette; only the hue comes from the
+user. That is the whole trick, and it is why the tool works on any URL without
+knowing anything about the site: a blunt instrument applied uniformly produces
+a coherent result where a clever one would produce a broken one.
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+## How it works
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+| Step | What happens |
+| --- | --- |
+| **Capture** | The URL is normalised and validated, then opened in a hosted headless Chrome session via [Browserless](https://browserless.io). |
+| **Repaint** | The generated stylesheet is injected with `addStyleTag` after load and before capture, so the screenshot is of the recoloured page. |
+| **Return** | The PNG is written to S3 and returned as a presigned URL that expires in 15 minutes. |
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+The entire API surface is one route: [`pages/api/remix.js`](pages/api/remix.js).
 
-## Learn More
+## Running it locally
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+cp .env.example .env.local   # then fill in your own credentials
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+You need a [Browserless](https://browserless.io) token and an S3 bucket. The
+IAM user needs only `s3:PutObject` and `s3:GetObject` on that one bucket — the
+app does nothing else with AWS, so don't hand it a broadly scoped key.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Without credentials the interface still runs; the API returns a message naming
+the variables it is missing.
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- URLs pointing at `localhost`, link-local, or private ranges are rejected, so
+  the screenshot browser can't be pointed at internal infrastructure.
+- Results are served as presigned URLs rather than public objects, which keeps
+  the bucket private and makes shared links expire on their own.
+- Fonts are self-hosted at build time through `next/font`, so the page makes no
+  third-party requests at runtime.
+- Sites that block automated browsers, or that render entirely in canvas or
+  images, won't recolour meaningfully — there are no CSS colours to override.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Built with
+
+Next.js (pages router) · React · Browserless · AWS S3 · deployed on Vercel
+
+---
+
+A passion project by [Darren Alderman](https://github.com/amblemind). © AmbleMind LLC

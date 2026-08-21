@@ -1,7 +1,10 @@
+import { fontVariables } from '../lib/fonts';
 import '../styles/globals.css';
 
-function MyApp({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+export default function App({ Component, pageProps }) {
+  return (
+    <div className={`app ${fontVariables}`}>
+      <Component {...pageProps} />
+    </div>
+  );
 }
-
-export default MyApp;

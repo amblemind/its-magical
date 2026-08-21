@@ -1,187 +1,179 @@
-import AWS from 'aws-sdk'
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+const SIGNED_URL_TTL_SECONDS = 60 * 15;
+const BROWSERLESS_ENDPOINT = 'https://chrome.browserless.io/screenshot';
+
+// Hosts that should never be reachable from the screenshot browser. Without
+// this, anyone could point the tool at internal infrastructure and read the
+// response back as an image.
+const BLOCKED_HOSTNAMES = new Set(['localhost', '0.0.0.0', '[::1]', '169.254.169.254']);
+const PRIVATE_IP = /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/;
+
+/**
+ * Accepts what a person is likely to type ("stripe.com") and returns a URL we
+ * can hand to a browser, or throws with a message worth showing them.
+ */
+function parseTargetUrl(input) {
+  const trimmed = (input || '').trim();
+  if (!trimmed) throw new Error('Enter a website URL to remix.');
+
+  let url;
+  try {
+    url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+  } catch {
+    throw new Error(`"${trimmed}" is not a URL we can open. Try something like stripe.com.`);
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('Only http and https URLs can be remixed.');
+  }
+  if (BLOCKED_HOSTNAMES.has(url.hostname) || PRIVATE_IP.test(url.hostname)) {
+    throw new Error('That address is on a private network, so the browser cannot reach it.');
+  }
+  return url.toString();
+}
 
 // https://css-tricks.com/converting-color-spaces-in-javascript/#aa-hex-to-hsl
-function hexToH(H) {
-	// Convert hex to RGB first
-	let r = 0, g = 0, b = 0;
-	if (H.length == 4) {
-	  r = "0x" + H[1] + H[1];
-	  g = "0x" + H[2] + H[2];
-	  b = "0x" + H[3] + H[3];
-	} else if (H.length == 7) {
-	  r = "0x" + H[1] + H[2];
-	  g = "0x" + H[3] + H[4];
-	  b = "0x" + H[5] + H[6];
-	}
-	// Then to HSL
-	r /= 255;
-	g /= 255;
-	b /= 255;
-	let cmin = Math.min(r,g,b),
-		cmax = Math.max(r,g,b),
-		delta = cmax - cmin,
-		h = 0,
-		s = 0,
-		l = 0;
-  
-	if (delta == 0)
-	  h = 0;
-	else if (cmax == r)
-	  h = ((g - b) / delta) % 6;
-	else if (cmax == g)
-	  h = (b - r) / delta + 2;
-	else
-	  h = (r - g) / delta + 4;
-  
-	h = Math.round(h * 60);
-  
-	if (h < 0)
-	  h += 360;
-  
-	l = (cmax + cmin) / 2;
-	// s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-	// s = +(s * 100).toFixed(1);
-	// l = +(l * 100).toFixed(1);
-  
-	// return "hsl(" + h + "," + s + "%," + l + "%)";
-	return h;
+// Only the hue is kept -- saturation and lightness come from the palette below.
+function hexToHue(hex) {
+  let r = 0, g = 0, b = 0;
+  if (hex.length === 4) {
+    r = '0x' + hex[1] + hex[1];
+    g = '0x' + hex[2] + hex[2];
+    b = '0x' + hex[3] + hex[3];
+  } else if (hex.length === 7) {
+    r = '0x' + hex[1] + hex[2];
+    g = '0x' + hex[3] + hex[4];
+    b = '0x' + hex[5] + hex[6];
+  }
+  r /= 255; g /= 255; b /= 255;
+
+  const cmin = Math.min(r, g, b);
+  const cmax = Math.max(r, g, b);
+  const delta = cmax - cmin;
+
+  let h = 0;
+  if (delta === 0) h = 0;
+  else if (cmax === r) h = ((g - b) / delta) % 6;
+  else if (cmax === g) h = (b - r) / delta + 2;
+  else h = (r - g) / delta + 4;
+
+  h = Math.round(h * 60);
+  return h < 0 ? h + 360 : h;
+}
+
+/** Resolves a hue from either the hue slider or a legacy hex colour. */
+function resolveHue({ hue, color }) {
+  const numeric = Number(hue);
+  if (Number.isFinite(numeric)) return ((Math.round(numeric) % 360) + 360) % 360;
+  if (typeof color === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) return hexToHue(color);
+  throw new Error('Pick a hue between 0 and 359.');
+}
+
+/**
+ * Every colour property on the target page, rebuilt from a single hue. This is
+ * injected into the page after load and before the screenshot is taken.
+ */
+function generateCss(hue) {
+  return `
+  :root {
+    --hue: ${hue};
+    --color-normal: hsl(var(--hue), 10%, 62%);
+    --color-light: hsl(var(--hue), 15%, 35%);
+    --color-richer: hsl(var(--hue), 50%, 72%);
+    --color-highlight: hsl(var(--hue), 70%, 45%);
+    --link-color: hsl(var(--hue), 90%, 70%);
+    --background: hsl(var(--hue), 20%, 12%);
   }
 
-  function generateCss(color) {
-
-	// console.log(hexToHSL(color));
-  
-	const hue = hexToH(color);
-	console.log(hue);
-  
-	const css = `
-	:root {
-	  --hue: ${hue}; 
-	  --accent-hue: ${hue};
-	  --color-normal: hsl(var(--hue), 10%, 62%);
-	  --color-light: hsl(var(--hue), 15%, 35%);
-	  --color-richer: hsl(var(--hue), 50%, 72%);
-	  --color-highlight: hsl(var(--accent-hue), 70%, 45%);
-	  --link-color: hsl(var(--hue), 90%, 70%);
-	  --accent-color: hsl(var(--accent-hue), 100%, 70%);
-	  --error-color: rgb(240, 50, 50);
-	  --button-background: hsl(var(--hue), 63%, 43%);
-	  --button-text-color: black;
-	  --background: hsl(var(--hue), 20%, 12%);
-	}
-	
-	* {
-	  color: var(--color-richer) !important;
-	  background-color: var(--background) !important;
-	  border-color: var(--color) !important;
-	  box-shadow: var(--color-light) !important;
-	  caret-color: var(--link-color) !important;
-	  column-rule-color: var(--color-light) !important;
-	  outline-color: var(--color-light) !important;
-	  text-decoration-color: var(--color-highlight) !important;
-	}
-	`;
-  
-	return css;
+  * {
+    color: var(--color-richer) !important;
+    background-color: var(--background) !important;
+    border-color: var(--color-light) !important;
+    box-shadow: none !important;
+    caret-color: var(--link-color) !important;
+    column-rule-color: var(--color-light) !important;
+    outline-color: var(--color-light) !important;
+    text-decoration-color: var(--color-highlight) !important;
   }
+
+  a, a * { color: var(--link-color) !important; }
+  `;
+}
+
+function requireEnv(...names) {
+  const missing = names.filter((name) => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`Server is missing ${missing.join(', ')}. See .env.example.`);
+  }
+}
+
+async function captureScreenshot(url, hue) {
+  const response = await fetch(`${BROWSERLESS_ENDPOINT}?token=${process.env.BROWSERLESS_TOKEN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+    body: JSON.stringify({
+      url,
+      gotoOptions: { waitUntil: 'networkidle2', timeout: 30000 },
+      viewport: { width: 1600, height: 900, deviceScaleFactor: 2 },
+      options: { fullPage: false, type: 'png' },
+      addStyleTag: [{ content: generateCss(hue) }],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(
+      response.status === 404 || detail.includes('net::ERR')
+        ? 'The browser could not load that site. Check the URL and try again.'
+        : 'The screenshot service did not respond. Try again in a moment.'
+    );
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function uploadAndSign(image, hue) {
+  const bucket = process.env.AWS_BUCKET;
+  const key = `its_magical_${hue}deg_${Date.now()}.png`;
+
+  const s3 = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS,
+      secretAccessKey: process.env.AWS_SECRET,
+    },
+  });
+
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: image,
+    ContentType: 'image/png',
+  }));
+
+  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+    expiresIn: SIGNED_URL_TTL_SECONDS,
+  });
+}
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Use POST to remix a page.' });
+  }
 
-	console.log("start request")
+  try {
+    requireEnv('BROWSERLESS_TOKEN', 'AWS_ACCESS', 'AWS_SECRET', 'AWS_BUCKET');
+    const url = parseTargetUrl(req.body?.url);
+    const hue = resolveHue(req.body ?? {});
 
-	const url = req.body.url;
-	const color = req.body.color;
+    const image = await captureScreenshot(url, hue);
+    const signedUrl = await uploadAndSign(image, hue);
 
-	console.log(url)
-
-	const S3 = new AWS.S3({
-		apiVersion: '2006-03-01',
-		accessKeyId: process.env.AWS_ACCESS,
-		secretAccessKey: process.env.AWS_SECRET
-	});
-
-	const S3_BUCKET = process.env.AWS_BUCKET;
-
-	console.log("bucket: " + S3_BUCKET)
-
-	// Perform URL validation
-	if (!url || !url.trim()) {
-		return res.status(400).json({
-			error: 'Enter a valid URL'
-		})
-	}
-
-	try {
-
-		console.log("fecthing image")
-		// fetch from api with body and headers
-		const screenshot = await fetch('https://chrome.browserless.io/screenshot?token=' + process.env.BROWSERLESS_TOKEN, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Cache-Control': 'no-cache'
-			},
-			body: JSON.stringify({
-				url: url,
-				gotoOptions: {
-					"waitUntil": "networkidle2",
-				},
-				waitFor: 0,
-				viewport: {
-					"width": 1980,
-					"height": 1080
-				},
-				options: {
-					"fullPage": false,
-					"type": "png"
-				},
-				addStyleTag: [
-					{
-					  "content": generateCss(color)
-					}
-				  ]
-			})
-		})
-
-		console.log(screenshot)
-
-		const imageBuffer = await screenshot.arrayBuffer()
-		
-
-		// upload to S3
-		const fileName = 'its_magical_' + Date.now() + '.png';
-
-		console.log("upload to s3")
-		await S3.upload({
-			Bucket: S3_BUCKET,
-			Key: fileName,
-			Body: Buffer.from(imageBuffer, 'base64'),
-            ContentType: 'image/png',
-		}, (err, data) => {
-
-			if (err) {
-				console.log(err)
-				return res.status(500).json({
-					error: 'Something went wrong'
-				})	
-			}
-
-			console.log(data)
-
-			console.log("creating signed url")
-			var params = {Bucket: S3_BUCKET, Key: fileName};
-			var signedURL = S3.getSignedUrl('getObject', params);
-			console.log(signedURL);
-
-			return res.status(200).json({url: signedURL});
-		});
-
-	} catch (error) {
-
-		console.log(error)
-		return res.status(400).json({
-			error: error.message || 'Something went wrong'
-		})
-
-	}
+    return res.status(200).json({ url: signedUrl, hue, expiresIn: SIGNED_URL_TTL_SECONDS });
+  } catch (error) {
+    console.error('[remix]', error);
+    return res.status(400).json({ error: error.message || 'The remix failed. Try again.' });
+  }
 }
