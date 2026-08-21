@@ -383,6 +383,11 @@
   color: var(--muted);
 }
 
+.stageActions {
+  display: flex;
+  gap: 18px;
+}
+
 .stageLink {
   color: var(--accent);
   text-decoration: none;

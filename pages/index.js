@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from '../styles/Home.module.css';
 
 const DEFAULT_HUE = 284;
@@ -27,10 +27,14 @@ export default function Home() {
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const objectUrl = useRef(null);
 
   const remix = useCallback(async () => {
     setStatus('loading');
     setError(null);
+    // Pinned now, so the caption still describes what was rendered even if the
+    // dial moves while the request is in flight.
+    const requestedHue = hue;
 
     try {
       const response = await fetch('/api/remix', {
@@ -38,17 +42,30 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, hue }),
       });
-      const data = await response.json();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'The remix failed. Try again.');
+      }
 
-      if (!response.ok) throw new Error(data.error || 'The remix failed. Try again.');
+      // The route answers with the PNG itself, so it becomes an object URL
+      // rather than a link into storage. Revoke the previous one first --
+      // object URLs live until the document is discarded otherwise.
+      const blob = await response.blob();
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+      objectUrl.current = URL.createObjectURL(blob);
 
-      setResult({ url: data.url, hue: data.hue });
+      setResult({ url: objectUrl.current, hue: requestedHue, bytes: blob.size });
       setStatus('done');
     } catch (err) {
       setError(err.message);
       setStatus('error');
     }
   }, [url, hue]);
+
+  // Release the last object URL when the page goes away.
+  useEffect(() => () => {
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+  }, []);
 
   const updateUrl = useCallback((value) => {
     setUrl(value);
@@ -209,10 +226,21 @@ export default function Home() {
 
           {result && (
             <div className={styles.stageFooter}>
-              <span>rendered at {result.hue}° · link expires in 15 minutes</span>
-              <a className={styles.stageLink} href={result.url} target="_blank" rel="noreferrer">
-                Open full size ↗
-              </a>
+              <span>
+                rendered at {result.hue}° · {Math.round(result.bytes / 1024)} KB
+              </span>
+              <span className={styles.stageActions}>
+                <a
+                  className={styles.stageLink}
+                  href={result.url}
+                  download={`its-magical-${result.hue}deg.png`}
+                >
+                  Download PNG
+                </a>
+                <a className={styles.stageLink} href={result.url} target="_blank" rel="noreferrer">
+                  Open full size ↗
+                </a>
+              </span>
             </div>
           )}
         </section>

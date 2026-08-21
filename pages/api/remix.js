@@ -1,7 +1,3 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
-const SIGNED_URL_TTL_SECONDS = 60 * 15;
 const BROWSERLESS_ENDPOINT = 'https://chrome.browserless.io/screenshot';
 
 // Hosts that should never be reachable from the screenshot browser. Without
@@ -133,30 +129,6 @@ async function captureScreenshot(url, hue) {
   return Buffer.from(await response.arrayBuffer());
 }
 
-async function uploadAndSign(image, hue) {
-  const bucket = process.env.AWS_BUCKET;
-  const key = `its_magical_${hue}deg_${Date.now()}.png`;
-
-  const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'us-east-1',
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS,
-      secretAccessKey: process.env.AWS_SECRET,
-    },
-  });
-
-  await s3.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    Body: image,
-    ContentType: 'image/png',
-  }));
-
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
-    expiresIn: SIGNED_URL_TTL_SECONDS,
-  });
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -164,14 +136,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    requireEnv('BROWSERLESS_TOKEN', 'AWS_ACCESS', 'AWS_SECRET', 'AWS_BUCKET');
+    requireEnv('BROWSERLESS_TOKEN');
     const url = parseTargetUrl(req.body?.url);
     const hue = resolveHue(req.body ?? {});
 
     const image = await captureScreenshot(url, hue);
-    const signedUrl = await uploadAndSign(image, hue);
 
-    return res.status(200).json({ url: signedUrl, hue, expiresIn: SIGNED_URL_TTL_SECONDS });
+    // The PNG is returned as the response body rather than a link to it; the
+    // client wraps it in an object URL. Errors still come back as JSON, so the
+    // caller distinguishes the two by response status.
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Length', image.length);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Remix-Hue', String(hue));
+    return res.status(200).send(image);
   } catch (error) {
     console.error('[remix]', error);
     return res.status(400).json({ error: error.message || 'The remix failed. Try again.' });

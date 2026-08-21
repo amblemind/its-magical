@@ -55,7 +55,7 @@ a coherent result where a clever one would produce a broken one.
 | --- | --- |
 | **Capture** | The URL is normalised and validated, then opened in a hosted headless Chrome session via [Browserless](https://browserless.io). |
 | **Repaint** | The generated stylesheet is injected with `addStyleTag` after load and before capture, so the screenshot is of the recoloured page. |
-| **Return** | The PNG is written to S3 and returned as a presigned URL that expires in 15 minutes. |
+| **Return** | The PNG is sent back as the response body and wrapped in an object URL by the client. Nothing is stored server-side. |
 
 The entire API surface is one route: [`pages/api/remix.js`](pages/api/remix.js).
 
@@ -63,23 +63,25 @@ The entire API surface is one route: [`pages/api/remix.js`](pages/api/remix.js).
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in your own credentials
+cp .env.example .env.local   # then add your Browserless token
 npm run dev
 ```
 
-You need a [Browserless](https://browserless.io) token and an S3 bucket. The
-IAM user needs only `s3:PutObject` and `s3:GetObject` on that one bucket — the
-app does nothing else with AWS, so don't hand it a broadly scoped key.
+A [Browserless](https://browserless.io) token is the only credential the app
+needs. There is no database and no object storage: the screenshot goes straight
+from the browser session to the response body, so a request leaves nothing
+behind on the server.
 
-Without credentials the interface still runs; the API returns a message naming
-the variables it is missing.
+Without the token the interface still runs; the API returns a message naming
+the variable it is missing.
 
 ## Notes
 
 - URLs pointing at `localhost`, link-local, or private ranges are rejected, so
   the screenshot browser can't be pointed at internal infrastructure.
-- Results are served as presigned URLs rather than public objects, which keeps
-  the bucket private and makes shared links expire on their own.
+- Results are never persisted. That means no storage credentials to leak and no
+  cleanup to run, at the cost of shareable links — a result lives only in the
+  tab that produced it, and the Download button saves it.
 - Fonts are self-hosted at build time through `next/font`, so the page makes no
   third-party requests at runtime.
 - Sites that block automated browsers, or that render entirely in canvas or
@@ -87,7 +89,7 @@ the variables it is missing.
 
 ## Built with
 
-Next.js (pages router) · React · Browserless · AWS S3 · deployed on Vercel
+Next.js (pages router) · React · Browserless · deployed on Vercel
 
 ---
 
